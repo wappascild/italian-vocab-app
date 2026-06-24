@@ -1,0 +1,1183 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2d6cdf" />
+  <title>意大利语短文背词</title>
+
+  <meta name="description" content="基于艾宾浩斯遗忘曲线的本地离线意大利语单词复习与短文背诵工具。" />
+  <meta name="application-name" content="意语背词" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="意语背词" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="format-detection" content="telephone=no" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png" />
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #14213d;
+      --muted: #687385;
+      --line: #e7eaf1;
+      --primary: #2d6cdf;
+      --primary-dark: #1c54b2;
+      --green: #15a46b;
+      --orange: #e48b22;
+      --red: #dd3b3b;
+      --purple: #7b61ff;
+      --shadow: 0 14px 40px rgba(20, 33, 61, 0.08);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      padding-bottom: calc(84px + env(safe-area-inset-bottom));
+    }
+
+    .app {
+      width: min(980px, 100%);
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      margin: -16px -16px 16px;
+      padding: calc(14px + env(safe-area-inset-top)) 16px 14px;
+      background: rgba(246,247,251,0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(231,234,241,0.8);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand h1 {
+      font-size: 20px;
+      margin: 0;
+      letter-spacing: -0.03em;
+    }
+
+    .date-pill {
+      color: var(--muted);
+      background: white;
+      border: 1px solid var(--line);
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .tabs {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+    }
+
+    .tab-btn {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 8px 4px;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+    .tab-btn.active { background: #eef4ff; color: var(--primary); font-weight: 700; }
+    .tab-icon { display: block; font-size: 18px; line-height: 1; margin-bottom: 2px; }
+
+    .view { display: none; animation: fadeIn .18s ease-out; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .grid { display: grid; gap: 12px; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    @media (max-width: 560px) {
+      .grid.two, .grid.three { grid-template-columns: 1fr; }
+      .brand h1 { font-size: 18px; }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .metric {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: 0 10px 28px rgba(20, 33, 61, 0.05);
+    }
+    .metric .num { font-size: 26px; font-weight: 800; letter-spacing: -0.04em; }
+    .metric .label { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+    h2 { margin: 4px 0 12px; font-size: 20px; letter-spacing: -0.02em; }
+    h3 { margin: 0 0 10px; font-size: 16px; }
+    p { margin: 8px 0; }
+    .muted { color: var(--muted); }
+    .small { font-size: 13px; }
+    .tiny { font-size: 12px; }
+
+    .button-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    button, .file-label {
+      font-family: inherit;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 14px;
+      padding: 11px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform .08s ease, background .15s ease, border-color .15s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    button:active, .file-label:active { transform: scale(0.98); }
+    .primary { background: var(--primary); border-color: var(--primary); color: white; font-weight: 700; }
+    .primary:hover { background: var(--primary-dark); }
+    .ghost { background: #f9fafc; }
+    .success { background: #e9f8f2; border-color: #c8eedf; color: #067548; font-weight: 700; }
+    .warn { background: #fff5e8; border-color: #ffe0b5; color: #9b5510; font-weight: 700; }
+    .danger { background: #fff0f0; border-color: #ffd3d3; color: #b42222; font-weight: 700; }
+    .purple { background: #f2efff; border-color: #ddd6ff; color: #5942d8; font-weight: 700; }
+    .full { width: 100%; }
+
+    .learning-card {
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      justify-content: space-between;
+    }
+    .word-main {
+      font-size: clamp(38px, 12vw, 68px);
+      font-weight: 850;
+      letter-spacing: -0.05em;
+      margin: 8px 0 0;
+      word-break: break-word;
+    }
+    .word-zh { font-size: 22px; font-weight: 700; color: var(--primary); }
+    .sentence {
+      padding: 12px;
+      border-radius: 14px;
+      background: #f7f9fd;
+      border: 1px solid var(--line);
+      color: #2a3445;
+    }
+    .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #f3f5f9;
+      color: var(--muted);
+      font-size: 12px;
+      border: 1px solid var(--line);
+    }
+    .progress-line {
+      height: 8px;
+      background: #edf1f7;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-line span { display: block; height: 100%; background: var(--primary); border-radius: 999px; width: 0%; transition: width .2s ease; }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 11px 12px;
+      background: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 8px 0 5px; }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(45,108,223,.12); }
+    input[type="file"] { display: none; }
+
+    .word-list { display: grid; gap: 8px; margin-top: 12px; }
+    .word-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: start;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+    }
+    .word-item strong { font-size: 17px; }
+    .word-actions { display: flex; gap: 6px; }
+    .word-actions button { padding: 7px 8px; font-size: 12px; border-radius: 10px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      overflow: hidden;
+      border-radius: 14px;
+    }
+    th, td { padding: 10px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 700; background: #f8fafc; }
+    tr:last-child td { border-bottom: 0; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+
+    .story-box {
+      background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+    }
+    .story-italian {
+      font-size: 19px;
+      line-height: 1.65;
+      letter-spacing: .01em;
+    }
+    .story-italian strong { color: var(--primary); }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(88px + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(20,33,61,0.94);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 999px;
+      opacity: 0;
+      pointer-events: none;
+      transition: all .2s ease;
+      z-index: 100;
+      max-width: 90%;
+      text-align: center;
+      font-size: 13px;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .empty {
+      padding: 22px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px dashed #cfd6e4;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .brand-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .install-btn {
+      border: 0;
+      background: var(--primary);
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(45, 108, 223, 0.18);
+      white-space: nowrap;
+    }
+    .install-hint {
+      margin-top: 12px;
+      border: 1px solid #d9e5ff;
+      background: #f4f8ff;
+      color: var(--muted);
+      border-radius: 16px;
+      padding: 12px;
+      font-size: 13px;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>🇮🇹 意大利语短文背词</h1>
+        <div class="brand-actions">
+          <button id="installPwaBtn" class="install-btn hidden" onclick="installPWA()">安装到手机</button>
+          <div class="date-pill" id="todayLabel">今天</div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="view active" id="view-home">
+        <div class="grid three" id="metrics"></div>
+        <div class="card" style="margin-top:12px;">
+          <h2>今日任务</h2>
+          <p class="muted small" id="todaySummary">正在生成今日任务...</p>
+          <div class="button-row" style="margin-top:12px;">
+            <button class="primary" onclick="startSession('today')">开始今日学习</button>
+            <button class="ghost" onclick="startSession('review')">只复习旧词</button>
+            <button class="purple" onclick="switchTab('story')">生成今日短文</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <h3>学习逻辑</h3>
+          <p class="small muted">三键筛选：已记住会进入更长间隔；有点模糊会明天再出现；未记住会留在困难词库，并优先复习。</p>
+        </div>
+        <div id="pwaInstallHint" class="install-hint hidden">
+          <strong>可安装为手机 App：</strong>安卓 Chrome 可点右上角“安装到手机”；iPhone 请用 Safari 打开，点分享按钮，然后选择“添加到主屏幕”。安装后可离线使用。
+        </div>
+      </section>
+
+      <section class="view" id="view-learn">
+        <div class="card learning-card">
+          <div>
+            <div class="button-row" style="justify-content: space-between;">
+              <button class="ghost" onclick="startSession('today')">今日</button>
+              <button class="ghost" onclick="startSession('new')">新词</button>
+              <button class="ghost" onclick="startSession('difficult')">困难词</button>
+            </div>
+            <div style="margin-top:12px;">
+              <div class="progress-line"><span id="sessionProgress"></span></div>
+              <p class="tiny muted" id="sessionCount">未开始</p>
+            </div>
+          </div>
+
+          <div id="cardArea">
+            <div class="empty">点击上方“今日 / 新词 / 困难词”开始。</div>
+          </div>
+
+          <div id="reviewButtons" class="grid three hidden">
+            <button class="success" onclick="reviewCurrent('known')">已记住</button>
+            <button class="warn" onclick="reviewCurrent('fuzzy')">有点模糊</button>
+            <button class="danger" onclick="reviewCurrent('unknown')">未记住</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-story">
+        <div class="card">
+          <h2>今日单词短文</h2>
+          <p class="muted small">系统会把今日新词、到期复习词、模糊词和困难词整理成一段可背诵的意大利语小短文。</p>
+          <div class="button-row" style="margin: 12px 0;">
+            <button class="primary" onclick="generateStory()">生成 / 刷新短文</button>
+            <button class="ghost" onclick="copyStory()">复制短文</button>
+            <button class="ghost" onclick="toggleTranslation()">显示 / 隐藏中文</button>
+          </div>
+          <div id="storyArea" class="story-box">
+            <div class="empty">点击“生成 / 刷新短文”。</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-library">
+        <div class="card">
+          <h2>我的词库</h2>
+          <div class="grid two">
+            <div>
+              <label>筛选状态</label>
+              <select id="filterStatus" onchange="renderLibrary()">
+                <option value="all">全部</option>
+                <option value="new">新词</option>
+                <option value="known">已记住</option>
+                <option value="fuzzy">有点模糊</option>
+                <option value="unknown">未记住</option>
+                <option value="due">今天到期复习</option>
+              </select>
+            </div>
+            <div>
+              <label>搜索</label>
+              <input id="searchBox" placeholder="搜索意大利语 / 中文 / 主题" oninput="renderLibrary()" />
+            </div>
+          </div>
+          <div class="button-row" style="margin-top:12px;">
+            <button class="ghost" onclick="exportCSV()">导出 CSV</button>
+            <button class="ghost" onclick="exportJSON()">导出备份</button>
+            <label class="file-label">导入 CSV<input type="file" accept=".csv,text/csv" onchange="importCSV(event)"></label>
+          </div>
+          <div id="libraryList" class="word-list"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-plan">
+        <div class="card">
+          <h2>每日计划</h2>
+          <div class="grid two">
+            <div>
+              <label>每天新词数量</label>
+              <input id="dailyNewInput" type="number" min="0" max="100" />
+            </div>
+            <div>
+              <label>每天最多复习旧词</label>
+              <input id="maxReviewInput" type="number" min="10" max="500" />
+            </div>
+          </div>
+          <div class="button-row" style="margin-top:12px;">
+            <button class="primary" onclick="saveSettings()">保存计划</button>
+            <button class="ghost" onclick="renderPlan()">刷新计划表</button>
+          </div>
+          <p class="small muted">计划表会根据你的现有词库和下次复习日期计算。后期如果复习量太高，建议降低每日新词。</p>
+          <div id="planTable" style="margin-top:12px;"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-settings">
+        <div class="card">
+          <h2>添加单词</h2>
+          <div class="grid two">
+            <div>
+              <label>意大利语</label>
+              <input id="newIt" placeholder="es. rossetto" />
+            </div>
+            <div>
+              <label>中文意思</label>
+              <input id="newZh" placeholder="口红" />
+            </div>
+          </div>
+          <div class="grid two">
+            <div>
+              <label>词性</label>
+              <select id="newPos">
+                <option value="名词">名词</option>
+                <option value="动词">动词</option>
+                <option value="形容词">形容词</option>
+                <option value="副词">副词</option>
+                <option value="短语">短语</option>
+              </select>
+            </div>
+            <div>
+              <label>主题</label>
+              <input id="newTopic" placeholder="美妆 / 购物 / 旅行 / 日常" />
+            </div>
+          </div>
+          <label>例句，可不填</label>
+          <textarea id="newExample" placeholder="es. Il rossetto rosso è molto bello."></textarea>
+          <button class="primary full" onclick="addWordFromForm()">添加到词库</button>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <h2>数据管理</h2>
+          <p class="small muted">所有数据都保存在当前浏览器本机 localStorage。换手机前请先导出备份。</p>
+          <div class="button-row">
+            <button class="ghost" onclick="loadSampleWords(true)">加入示例词库</button>
+            <button class="danger" onclick="resetAll()">清空全部数据</button>
+          </div>
+          <h3 style="margin-top:18px;">CSV 导入格式</h3>
+          <p class="small muted">第一行建议为：意大利语,中文,词性,主题,例句</p>
+          <textarea readonly>意大利语,中文,词性,主题,例句
+rossetto,口红,名词,美妆,Il rossetto rosso è molto bello.
+comprare,购买,动词,购物,Voglio comprare qualcosa di utile.</textarea>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="home" onclick="switchTab('home')"><span class="tab-icon">🏠</span>首页</button>
+    <button class="tab-btn" data-tab="learn" onclick="switchTab('learn')"><span class="tab-icon">📚</span>背词</button>
+    <button class="tab-btn" data-tab="story" onclick="switchTab('story')"><span class="tab-icon">📝</span>短文</button>
+    <button class="tab-btn" data-tab="library" onclick="switchTab('library')"><span class="tab-icon">🗂️</span>词库</button>
+    <button class="tab-btn" data-tab="plan" onclick="switchTab('plan')"><span class="tab-icon">📅</span>计划</button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const STORAGE_KEY = 'italian_vocab_story_app_v1';
+    const intervals = [0, 1, 2, 4, 7, 15, 30, 60, 90];
+    let state = loadState();
+    let session = { queue: [], index: 0, done: 0, mode: null };
+    let latestStory = '';
+    let translationVisible = true;
+    let deferredInstallPrompt = null;
+
+    function isStandaloneMode() {
+      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+
+    function updateInstallUI() {
+      const btn = document.getElementById('installPwaBtn');
+      const hint = document.getElementById('pwaInstallHint');
+      if (!btn) return;
+      const canPrompt = !!deferredInstallPrompt;
+      const isInstalled = isStandaloneMode();
+      btn.classList.toggle('hidden', isInstalled || !canPrompt);
+      if (hint) hint.classList.toggle('hidden', isInstalled);
+    }
+
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      updateInstallUI();
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      updateInstallUI();
+      showToast('已安装到主屏幕');
+    });
+
+    async function installPWA() {
+      if (!deferredInstallPrompt) {
+        showToast('iPhone 请用 Safari 分享按钮添加到主屏幕');
+        return;
+      }
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      updateInstallUI();
+    }
+
+    function registerServiceWorker() {
+      const isSecureContextForSW = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      if (!('serviceWorker' in navigator) || !isSecureContextForSW) return;
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service worker registration failed:', err));
+      });
+    }
+
+    registerServiceWorker();
+
+
+    function routeFromHash() {
+      const tab = (location.hash || '').replace('#', '');
+      if (['home', 'learn', 'story', 'library', 'plan'].includes(tab)) switchTab(tab);
+    }
+    window.addEventListener('hashchange', routeFromHash);
+
+
+    function todayStr(offset = 0) {
+      const d = new Date();
+      d.setHours(0,0,0,0);
+      d.setDate(d.getDate() + offset);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function addDays(dateStr, days) {
+      const d = new Date(dateStr + 'T00:00:00');
+      d.setDate(d.getDate() + days);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function uid() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return 'w_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+    }
+
+    function defaultState() {
+      return {
+        settings: { dailyNew: 20, maxReview: 80 },
+        words: [],
+        createdAt: todayStr()
+      };
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          const s = defaultState();
+          s.words = sampleWords();
+          saveState(s);
+          return s;
+        }
+        const parsed = JSON.parse(raw);
+        parsed.settings = parsed.settings || { dailyNew: 20, maxReview: 80 };
+        parsed.words = (parsed.words || []).map(normalizeWord);
+        return parsed;
+      } catch (e) {
+        console.error(e);
+        return defaultState();
+      }
+    }
+
+    function saveState(s = state) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+    }
+
+    function normalizeWord(w) {
+      return {
+        id: w.id || uid(),
+        it: (w.it || w.italian || '').trim(),
+        zh: (w.zh || w.chinese || '').trim(),
+        pos: (w.pos || '名词').trim(),
+        topic: (w.topic || '日常').trim(),
+        example: (w.example || '').trim(),
+        status: w.status || 'new',
+        stage: Number.isFinite(+w.stage) ? +w.stage : 0,
+        nextReview: w.nextReview || todayStr(),
+        firstSeen: w.firstSeen || null,
+        lastReviewed: w.lastReviewed || null,
+        reviewCount: Number.isFinite(+w.reviewCount) ? +w.reviewCount : 0,
+        correctCount: Number.isFinite(+w.correctCount) ? +w.correctCount : 0,
+        lastResult: w.lastResult || null,
+        createdAt: w.createdAt || todayStr()
+      };
+    }
+
+    function sampleWords() {
+      const rows = [
+        ['ciao','你好 / 再见','短语','日常','Ciao, come stai?'],
+        ['grazie','谢谢','短语','日常','Grazie per il tuo aiuto.'],
+        ['prego','不客气 / 请','短语','日常','Prego, entra pure.'],
+        ['bella','美丽的','形容词','外貌','Questa città è molto bella.'],
+        ['buono','好的 / 好吃的','形容词','日常','Il caffè è molto buono.'],
+        ['oggi','今天','副词','日常','Oggi studio italiano.'],
+        ['domani','明天','副词','日常','Domani vado al lavoro.'],
+        ['comprare','购买','动词','购物','Voglio comprare qualcosa di utile.'],
+        ['negozio','商店','名词','购物','Entro in un negozio vicino a casa.'],
+        ['prezzo','价格','名词','购物','Il prezzo è molto buono.'],
+        ['economico','便宜的','形容词','购物','Questo prodotto è economico.'],
+        ['scegliere','选择','动词','购物','Devo scegliere un colore.'],
+        ['provare','试用 / 尝试','动词','购物','Posso provare questo prodotto?'],
+        ['colore','颜色','名词','美妆','Mi piace questo colore.'],
+        ['rosso','红色的','形容词','颜色','Il rossetto rosso è elegante.'],
+        ['rosa','粉色 / 粉色的','名词','颜色','Il colore rosa è dolce.'],
+        ['rossetto','口红','名词','美妆','Il rossetto rosso è molto bello.'],
+        ['trucco','化妆 / 妆容','名词','美妆','Il trucco è naturale.'],
+        ['crema','面霜 / 乳霜','名词','护肤','Uso una crema ogni mattina.'],
+        ['profumo','香水','名词','美妆','Questo profumo è dolce e fresco.'],
+        ['viso','脸','名词','美妆','Lavo il viso con cura.'],
+        ['pelle','皮肤','名词','护肤','La mia pelle è morbida.'],
+        ['capelli','头发','名词','美发','I capelli sono lucidi.'],
+        ['borsa','包','名词','购物','Metto il rossetto nella borsa.'],
+        ['amica','朋友，女性','名词','日常','La mia amica studia con me.'],
+        ['ragazza','女孩','名词','日常','La ragazza è felice.'],
+        ['felice','开心的','形容词','情绪','Sono felice oggi.'],
+        ['facile','简单的','形容词','学习','Questa frase è facile.'],
+        ['difficile','困难的','形容词','学习','Questa parola è difficile.'],
+        ['ricordare','记住','动词','学习','Voglio ricordare queste parole.'],
+        ['ripetere','重复','动词','学习','Devo ripetere la frase.'],
+        ['parlare','说话','动词','学习','Provo a parlare italiano.'],
+        ['leggere','阅读','动词','学习','Mi piace leggere una storia breve.'],
+        ['scrivere','写','动词','学习','Scrivo una frase in italiano.'],
+        ['viaggio','旅行','名词','旅行','Il viaggio in Italia è speciale.'],
+        ['stazione','车站','名词','旅行','La stazione è vicino al centro.'],
+        ['albergo','酒店','名词','旅行','L\'albergo è pulito.'],
+        ['mangiare','吃','动词','饮食','Voglio mangiare una pizza.'],
+        ['acqua','水','名词','饮食','Bevo acqua ogni giorno.'],
+        ['caffè','咖啡','名词','饮食','Prendo un caffè al bar.']
+      ];
+      return rows.map(r => normalizeWord({ it: r[0], zh: r[1], pos: r[2], topic: r[3], example: r[4] }));
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 1800);
+    }
+
+    function isDue(w, day = todayStr()) {
+      return w.firstSeen && w.nextReview <= day;
+    }
+
+    function getNewWords(limit = state.settings.dailyNew) {
+      return state.words
+        .filter(w => !w.firstSeen)
+        .sort((a,b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
+        .slice(0, limit);
+    }
+
+    function getDueWords(limit = state.settings.maxReview) {
+      const priority = { unknown: 0, fuzzy: 1, known: 2, new: 3 };
+      return state.words
+        .filter(w => isDue(w))
+        .sort((a,b) => (priority[a.status] ?? 9) - (priority[b.status] ?? 9) || (a.nextReview || '').localeCompare(b.nextReview || ''))
+        .slice(0, limit);
+    }
+
+    function getTodayWords() {
+      const due = getDueWords(state.settings.maxReview);
+      const remaining = Math.max(0, state.settings.dailyNew);
+      const fresh = getNewWords(remaining);
+      return [...due, ...fresh];
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById('view-' + tab).classList.add('active');
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      if (tab === 'home') renderHome();
+      if (tab === 'library') renderLibrary();
+      if (tab === 'plan') renderPlan();
+    }
+
+    function renderAll() {
+      document.getElementById('todayLabel').textContent = todayStr();
+      document.getElementById('dailyNewInput').value = state.settings.dailyNew;
+      document.getElementById('maxReviewInput').value = state.settings.maxReview;
+      renderHome();
+      renderLibrary();
+      renderPlan();
+    }
+
+    function renderHome() {
+      const total = state.words.length;
+      const newCount = state.words.filter(w => !w.firstSeen).length;
+      const dueCount = state.words.filter(w => isDue(w)).length;
+      const fuzzyCount = state.words.filter(w => w.status === 'fuzzy').length;
+      const unknownCount = state.words.filter(w => w.status === 'unknown').length;
+      const knownCount = state.words.filter(w => w.status === 'known').length;
+      const todayWords = getTodayWords();
+      document.getElementById('metrics').innerHTML = `
+        <div class="metric"><div class="num">${total}</div><div class="label">总词库</div></div>
+        <div class="metric"><div class="num">${todayWords.length}</div><div class="label">今日任务</div></div>
+        <div class="metric"><div class="num">${dueCount}</div><div class="label">到期复习</div></div>
+        <div class="metric"><div class="num">${newCount}</div><div class="label">未学新词</div></div>
+        <div class="metric"><div class="num">${knownCount}</div><div class="label">已记住</div></div>
+        <div class="metric"><div class="num">${fuzzyCount + unknownCount}</div><div class="label">模糊 / 困难</div></div>
+      `;
+      document.getElementById('todaySummary').textContent = `今天建议学习 ${Math.min(state.settings.dailyNew, newCount)} 个新词，复习 ${Math.min(state.settings.maxReview, dueCount)} 个旧词。优先处理未记住和有点模糊的词。`;
+    }
+
+    function startSession(mode) {
+      switchTab('learn');
+      let queue = [];
+      if (mode === 'today') queue = getTodayWords();
+      if (mode === 'review') queue = getDueWords(state.settings.maxReview);
+      if (mode === 'new') queue = getNewWords(state.settings.dailyNew);
+      if (mode === 'difficult') queue = state.words.filter(w => w.status === 'unknown' || w.status === 'fuzzy').sort((a,b) => (a.nextReview || '').localeCompare(b.nextReview || ''));
+      session = { queue, index: 0, done: 0, mode };
+      renderCurrentCard();
+    }
+
+    function renderCurrentCard() {
+      const area = document.getElementById('cardArea');
+      const btns = document.getElementById('reviewButtons');
+      const total = session.queue.length;
+      const current = session.queue[session.index];
+      const pct = total ? Math.round((session.done / total) * 100) : 0;
+      document.getElementById('sessionProgress').style.width = pct + '%';
+      document.getElementById('sessionCount').textContent = total ? `进度：${session.done}/${total}` : '当前没有需要学习的词';
+      if (!current) {
+        btns.classList.add('hidden');
+        area.innerHTML = `<div class="empty"><strong>完成啦！</strong><br>当前队列已经结束。可以去“短文”页面生成今日背诵段落。</div>`;
+        renderHome();
+        return;
+      }
+      btns.classList.remove('hidden');
+      area.innerHTML = `
+        <div>
+          <div class="chip-row">
+            <span class="chip">${escapeHTML(current.pos || '词')}</span>
+            <span class="chip">${escapeHTML(current.topic || '日常')}</span>
+            <span class="chip">第 ${current.stage + 1} 阶段</span>
+          </div>
+          <div class="word-main">${escapeHTML(current.it)}</div>
+          <div class="word-zh">${escapeHTML(current.zh)}</div>
+          ${current.example ? `<div class="sentence">${escapeHTML(current.example)}</div>` : ''}
+          <p class="tiny muted">下次复习：${escapeHTML(current.nextReview || todayStr())}</p>
+        </div>
+      `;
+    }
+
+    function reviewCurrent(result) {
+      const w = session.queue[session.index];
+      if (!w) return;
+      const today = todayStr();
+      if (!w.firstSeen) w.firstSeen = today;
+      w.reviewCount += 1;
+      w.lastReviewed = today;
+      w.lastResult = result;
+
+      if (result === 'known') {
+        w.status = 'known';
+        w.correctCount += 1;
+        w.stage = Math.min((w.stage || 0) + 1, intervals.length - 1);
+        w.nextReview = addDays(today, intervals[w.stage]);
+        showToast(`已记住：${w.it}，${intervals[w.stage]} 天后复习`);
+      }
+      if (result === 'fuzzy') {
+        w.status = 'fuzzy';
+        w.stage = Math.max(0, Math.min(w.stage || 0, 2));
+        w.nextReview = addDays(today, 1);
+        showToast(`有点模糊：${w.it}，明天再复习`);
+      }
+      if (result === 'unknown') {
+        w.status = 'unknown';
+        w.stage = 0;
+        w.nextReview = today;
+        showToast(`未记住：${w.it}，已放入困难词库`);
+      }
+      saveState();
+      session.done += 1;
+      session.index += 1;
+      renderCurrentCard();
+    }
+
+    function generateStory() {
+      const words = uniqueById(getTodayWords().concat(
+        state.words.filter(w => w.status === 'unknown' || w.status === 'fuzzy').slice(0, 10)
+      )).slice(0, 28);
+      const area = document.getElementById('storyArea');
+      if (!words.length) {
+        area.innerHTML = `<div class="empty">目前没有可生成短文的单词，请先添加或导入词库。</div>`;
+        return;
+      }
+      const nouns = words.filter(w => /名词|noun/i.test(w.pos)).slice(0, 8);
+      const verbs = words.filter(w => /动词|verb/i.test(w.pos)).slice(0, 6);
+      const adjs = words.filter(w => /形容词|adj/i.test(w.pos)).slice(0, 6);
+      const others = words.filter(w => !nouns.includes(w) && !verbs.includes(w) && !adjs.includes(w)).slice(0, 6);
+      const topicText = detectScene(words);
+
+      const nounList = nouns.map(w => `<strong>${escapeHTML(w.it)}</strong>`).join(', ');
+      const verbList = verbs.map(w => `<strong>${escapeHTML(w.it)}</strong>`).join(', ');
+      const adjList = adjs.map(w => `<strong>${escapeHTML(w.it)}</strong>`).join(', ');
+      const otherList = others.map(w => `<strong>${escapeHTML(w.it)}</strong>`).join(', ');
+
+      const itSentences = [];
+      itSentences.push(`Oggi immagino una piccola scena: ${topicText}.`);
+      if (nounList) itSentences.push(`Davanti a me vedo alcune cose importanti: ${nounList}.`);
+      if (verbList) itSentences.push(`Per raccontare meglio la storia, provo a usare questi verbi: ${verbList}.`);
+      if (adjList) itSentences.push(`Descrivo ogni cosa con parole semplici come ${adjList}.`);
+      if (otherList) itSentences.push(`Poi ripeto anche queste parole utili: ${otherList}.`);
+      itSentences.push(`Alla fine leggo la storia ad alta voce e cerco di ricordare ogni parola senza guardare la traduzione.`);
+
+      const zhList = words.map(w => `${w.it}=${w.zh}`).join('；');
+      latestStory = stripHTML(itSentences.join(' '));
+      const exampleBlock = words.filter(w => w.example).slice(0, 5).map(w => `<li><strong>${escapeHTML(w.it)}</strong>: ${escapeHTML(w.example)}</li>`).join('');
+      area.innerHTML = `
+        <div class="story-italian">${itSentences.join(' ')}</div>
+        <div id="storyTranslation" style="margin-top:14px;">
+          <h3>中文辅助</h3>
+          <p class="small muted">今天重点词：${escapeHTML(zhList)}</p>
+          ${exampleBlock ? `<h3>可背例句</h3><ul class="small">${exampleBlock}</ul>` : ''}
+        </div>
+      `;
+      translationVisible = true;
+    }
+
+    function detectScene(words) {
+      const topics = words.map(w => (w.topic || '').toLowerCase()).join(' ');
+      const all = words.map(w => (w.it + ' ' + w.zh).toLowerCase()).join(' ');
+      if (/美妆|护肤|beauty|makeup|cosmetic|rossetto|profumo|pelle|viso/.test(topics + all)) {
+        return 'entro in un negozio di cosmetici e scelgo un prodotto per me';
+      }
+      if (/购物|shop|negozio|comprare|prezzo|economico/.test(topics + all)) {
+        return 'entro in un negozio, guardo il prezzo e scelgo con calma';
+      }
+      if (/旅行|travel|viaggio|stazione|albergo/.test(topics + all)) {
+        return 'faccio un viaggio in Italia, arrivo alla stazione e cerco il mio albergo';
+      }
+      if (/饮食|food|caffè|acqua|mangiare/.test(topics + all)) {
+        return 'sono in un piccolo bar italiano, bevo un caffè e mangio qualcosa di buono';
+      }
+      return 'vivo una giornata semplice e provo a parlare italiano';
+    }
+
+    function toggleTranslation() {
+      const el = document.getElementById('storyTranslation');
+      if (!el) return;
+      translationVisible = !translationVisible;
+      el.style.display = translationVisible ? 'block' : 'none';
+    }
+
+    async function copyStory() {
+      if (!latestStory) generateStory();
+      try {
+        await navigator.clipboard.writeText(latestStory);
+        showToast('已复制今日短文');
+      } catch (e) {
+        showToast('复制失败，请手动选择文本');
+      }
+    }
+
+    function renderLibrary() {
+      const list = document.getElementById('libraryList');
+      if (!list) return;
+      const status = document.getElementById('filterStatus')?.value || 'all';
+      const q = (document.getElementById('searchBox')?.value || '').toLowerCase().trim();
+      let words = [...state.words];
+      if (status !== 'all') {
+        if (status === 'due') words = words.filter(w => isDue(w));
+        else words = words.filter(w => (w.status || 'new') === status);
+      }
+      if (q) {
+        words = words.filter(w => [w.it, w.zh, w.pos, w.topic, w.example].join(' ').toLowerCase().includes(q));
+      }
+      words.sort((a,b) => (a.nextReview || '').localeCompare(b.nextReview || '') || a.it.localeCompare(b.it));
+      if (!words.length) {
+        list.innerHTML = `<div class="empty">没有找到符合条件的单词。</div>`;
+        return;
+      }
+      list.innerHTML = words.slice(0, 250).map(w => `
+        <div class="word-item">
+          <div>
+            <strong>${escapeHTML(w.it)}</strong> <span class="muted">${escapeHTML(w.zh)}</span>
+            <div class="chip-row" style="margin-top:6px;">
+              <span class="chip">${statusLabel(w.status)}</span>
+              <span class="chip">${escapeHTML(w.pos)}</span>
+              <span class="chip">${escapeHTML(w.topic)}</span>
+              <span class="chip">下次：${escapeHTML(w.nextReview || todayStr())}</span>
+            </div>
+            ${w.example ? `<p class="tiny muted">${escapeHTML(w.example)}</p>` : ''}
+          </div>
+          <div class="word-actions">
+            <button onclick="editWord('${w.id}')">改</button>
+            <button onclick="deleteWord('${w.id}')">删</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function statusLabel(s) {
+      return ({ new: '新词', known: '已记住', fuzzy: '有点模糊', unknown: '未记住' })[s] || s;
+    }
+
+    function addWordFromForm() {
+      const it = document.getElementById('newIt').value.trim();
+      const zh = document.getElementById('newZh').value.trim();
+      const pos = document.getElementById('newPos').value.trim();
+      const topic = document.getElementById('newTopic').value.trim() || '日常';
+      const example = document.getElementById('newExample').value.trim();
+      if (!it || !zh) {
+        showToast('请填写意大利语和中文意思');
+        return;
+      }
+      state.words.push(normalizeWord({ it, zh, pos, topic, example }));
+      saveState();
+      ['newIt','newZh','newTopic','newExample'].forEach(id => document.getElementById(id).value = '');
+      renderAll();
+      showToast('已添加单词');
+    }
+
+    function editWord(id) {
+      const w = state.words.find(x => x.id === id);
+      if (!w) return;
+      const it = prompt('意大利语', w.it);
+      if (it === null) return;
+      const zh = prompt('中文意思', w.zh);
+      if (zh === null) return;
+      const pos = prompt('词性', w.pos);
+      if (pos === null) return;
+      const topic = prompt('主题', w.topic);
+      if (topic === null) return;
+      const example = prompt('例句', w.example || '');
+      if (example === null) return;
+      Object.assign(w, { it: it.trim(), zh: zh.trim(), pos: pos.trim() || '名词', topic: topic.trim() || '日常', example: example.trim() });
+      saveState();
+      renderAll();
+      showToast('已修改');
+    }
+
+    function deleteWord(id) {
+      const w = state.words.find(x => x.id === id);
+      if (!w) return;
+      if (!confirm(`确认删除 ${w.it} 吗？`)) return;
+      state.words = state.words.filter(x => x.id !== id);
+      saveState();
+      renderAll();
+      showToast('已删除');
+    }
+
+    function saveSettings() {
+      const dailyNew = Math.max(0, Math.min(100, parseInt(document.getElementById('dailyNewInput').value || '20', 10)));
+      const maxReview = Math.max(10, Math.min(500, parseInt(document.getElementById('maxReviewInput').value || '80', 10)));
+      state.settings.dailyNew = dailyNew;
+      state.settings.maxReview = maxReview;
+      saveState();
+      renderAll();
+      showToast('计划已保存');
+    }
+
+    function renderPlan() {
+      const holder = document.getElementById('planTable');
+      if (!holder) return;
+      let remainingNew = state.words.filter(w => !w.firstSeen).length;
+      const rows = [];
+      for (let i = 0; i < 30; i++) {
+        const day = todayStr(i);
+        const due = state.words.filter(w => w.firstSeen && w.nextReview === day).length;
+        const newCount = Math.min(state.settings.dailyNew, remainingNew);
+        remainingNew -= newCount;
+        rows.push({ day, newCount, due, total: newCount + due });
+      }
+      holder.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>日期</th><th>新词</th><th>到期复习</th><th>预计总量</th></tr></thead>
+            <tbody>${rows.map(r => `<tr><td>${r.day}</td><td>${r.newCount}</td><td>${r.due}</td><td>${r.total}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function exportCSV() {
+      const header = ['意大利语','中文','词性','主题','例句','状态','阶段','下次复习','已复习次数'];
+      const rows = state.words.map(w => [w.it,w.zh,w.pos,w.topic,w.example,w.status,w.stage,w.nextReview,w.reviewCount]);
+      const csv = [header, ...rows].map(row => row.map(csvEscape).join(',')).join('\n');
+      downloadText(csv, 'italian_words_export.csv', 'text/csv;charset=utf-8');
+    }
+
+    function exportJSON() {
+      downloadText(JSON.stringify(state, null, 2), 'italian_vocab_backup.json', 'application/json;charset=utf-8');
+    }
+
+    function csvEscape(v) {
+      const s = String(v ?? '');
+      if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
+    function downloadText(text, filename, type) {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function importCSV(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = reader.result;
+        const rows = parseCSV(text).filter(r => r.some(x => x.trim()));
+        if (!rows.length) return showToast('CSV 为空');
+        let start = 0;
+        let map = { it:0, zh:1, pos:2, topic:3, example:4 };
+        const head = rows[0].map(x => x.trim().toLowerCase());
+        const joined = head.join('|');
+        if (/意大利|italian|it/.test(joined) && /中文|chinese|zh/.test(joined)) {
+          start = 1;
+          map.it = findHeader(head, ['意大利语','italian','it','word'], 0);
+          map.zh = findHeader(head, ['中文','chinese','zh','meaning'], 1);
+          map.pos = findHeader(head, ['词性','pos','part of speech'], 2);
+          map.topic = findHeader(head, ['主题','topic','category'], 3);
+          map.example = findHeader(head, ['例句','example','sentence'], 4);
+        }
+        let added = 0;
+        for (let i = start; i < rows.length; i++) {
+          const r = rows[i];
+          const it = (r[map.it] || '').trim();
+          const zh = (r[map.zh] || '').trim();
+          if (!it || !zh) continue;
+          const exists = state.words.some(w => w.it.toLowerCase() === it.toLowerCase() && w.zh === zh);
+          if (exists) continue;
+          state.words.push(normalizeWord({ it, zh, pos: r[map.pos] || '名词', topic: r[map.topic] || '日常', example: r[map.example] || '' }));
+          added++;
+        }
+        saveState();
+        renderAll();
+        event.target.value = '';
+        showToast(`导入完成：新增 ${added} 个词`);
+      };
+      reader.readAsText(file, 'utf-8');
+    }
+
+    function findHeader(head, names, fallback) {
+      const idx = head.findIndex(h => names.some(n => h.includes(n)));
+      return idx >= 0 ? idx : fallback;
+    }
+
+    function parseCSV(text) {
+      const rows = [];
+      let row = [], cur = '', quote = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const next = text[i+1];
+        if (ch === '"') {
+          if (quote && next === '"') { cur += '"'; i++; }
+          else quote = !quote;
+        } else if (ch === ',' && !quote) {
+          row.push(cur); cur = '';
+        } else if ((ch === '\n' || ch === '\r') && !quote) {
+          if (ch === '\r' && next === '\n') i++;
+          row.push(cur); rows.push(row); row = []; cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      row.push(cur); rows.push(row);
+      return rows;
+    }
+
+    function loadSampleWords(append = false) {
+      const samples = sampleWords();
+      let added = 0;
+      for (const sw of samples) {
+        const exists = state.words.some(w => w.it.toLowerCase() === sw.it.toLowerCase());
+        if (!exists || append) { state.words.push(normalizeWord(sw)); added++; }
+      }
+      saveState();
+      renderAll();
+      showToast(`已加入 ${added} 个示例词`);
+    }
+
+    function resetAll() {
+      if (!confirm('确认清空所有词库和学习记录吗？此操作不可恢复。')) return;
+      state = defaultState();
+      saveState();
+      renderAll();
+      showToast('已清空数据');
+    }
+
+    function uniqueById(arr) {
+      const seen = new Set();
+      const out = [];
+      for (const x of arr) {
+        if (!seen.has(x.id)) { seen.add(x.id); out.push(x); }
+      }
+      return out;
+    }
+
+    function escapeHTML(str) {
+      return String(str ?? '').replace(/[&<>'"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[c]));
+    }
+    function stripHTML(str) {
+      const div = document.createElement('div');
+      div.innerHTML = str;
+      return div.textContent || div.innerText || '';
+    }
+
+    renderAll();
+    routeFromHash();
+    updateInstallUI();
+  </script>
+</body>
+</html>
